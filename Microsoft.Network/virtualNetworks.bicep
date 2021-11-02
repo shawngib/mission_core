@@ -16,7 +16,7 @@ var arr = {
   }
 }
 
-var subnet =(empty(networkSecurityGroup.id) ? subnets, union(subnets, arr))
+var subnet =(empty(networkSecurityGroup.id) ? subnets: union(subnets, arr))
 
 resource virtualNetworks 'Microsoft.Network/virtualNetworks@2021-03-01' = {
   name: name
