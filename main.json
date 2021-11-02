@@ -1,0 +1,432 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2018-05-01/subscriptionDeploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.4.1008.15138",
+      "templateHash": "15479307117699772923"
+    }
+  },
+  "parameters": {
+    "managedBy": {
+      "type": "string",
+      "defaultValue": "shawn.gibbs@mscpec.com"
+    },
+    "namePrefix": {
+      "type": "string",
+      "defaultValue": "mlz"
+    },
+    "location": {
+      "type": "string",
+      "defaultValue": "[deployment().location]"
+    },
+    "tags": {
+      "type": "object",
+      "defaultValue": {}
+    },
+    "resourceGroups": {
+      "type": "object",
+      "defaultValue": {
+        "hub": {
+          "name": "hub",
+          "addressPrefix": "10.0.100.0/24",
+          "subnets": {
+            "name": "hub-subnet",
+            "properties": {
+              "subnetPrefix": "10.0.100.128/27",
+              "serviceEndpoints": [
+                "Microsoft.Storage"
+              ],
+              "networkSecurityGroup": {}
+            }
+          }
+        },
+        "operations": {
+          "name": "operations",
+          "addressPrefix": "10.0.115.0/26",
+          "subnets": {
+            "name": "operations-subnet",
+            "properties": {
+              "subnetPrefix": "10.0.115.0/27",
+              "serviceEndpoints": [
+                "Microsoft.Storage"
+              ],
+              "networkSecurityGroup": {}
+            }
+          }
+        },
+        "sharedServices": {
+          "name": "sharedServices",
+          "addressPrefix": "10.0.120.0/26",
+          "subnets": {
+            "name": "sharedServices-subnet",
+            "properties": {
+              "subnetPrefix": "10.0.120.0/27",
+              "serviceEndpoints": [
+                "Microsoft.Storage"
+              ],
+              "networkSecurityGroup": {}
+            }
+          }
+        },
+        "identity": {
+          "name": "identity",
+          "addressPrefix": "10.0.110.0/26",
+          "subnets": {
+            "name": "identity-subnet",
+            "properties": {
+              "subnetPrefix": "10.0.110.0/27",
+              "serviceEndpoints": [
+                "Microsoft.Storage"
+              ],
+              "networkSecurityGroup": {}
+            }
+          }
+        }
+      }
+    }
+  },
+  "functions": [],
+  "variables": {
+    "name": "[if(empty(deployment().name), parameters('namePrefix'), deployment().name)]",
+    "defaultNetworkSecurityGroupRules": [
+      {
+        "name": "allow_ssh",
+        "properties": {
+          "description": "Allow SSH access from anywhere",
+          "access": "Allow",
+          "priority": 100,
+          "protocol": "Tcp",
+          "direction": "Inbound",
+          "sourcePortRange": "*",
+          "sourceAddressPrefix": "*",
+          "destinationPortRange": "22",
+          "destinationAddressPrefix": "*"
+        }
+      },
+      {
+        "name": "allow_rdp",
+        "properties": {
+          "description": "Allow RDP access from anywhere",
+          "access": "Allow",
+          "priority": 200,
+          "protocol": "Tcp",
+          "direction": "Inbound",
+          "sourcePortRange": "*",
+          "sourceAddressPrefix": "*",
+          "destinationPortRange": "3389",
+          "destinationAddressPrefix": "*"
+        }
+      }
+    ]
+  },
+  "resources": [
+    {
+      "copy": {
+        "name": "MlzResourceGroup",
+        "count": "[length(parameters('resourceGroups').name)]"
+      },
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2020-06-01",
+      "name": "[format('deploy-rg-{0}-{1}-{2}', variables('name'), parameters('location'), parameters('resourceGroups').name[copyIndex()])]",
+      "location": "[deployment().location]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "name": {
+            "value": "[format('rg-{0}-{1}-{2}', variables('name'), parameters('location'), parameters('resourceGroups').name[copyIndex()])]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "tags": {
+            "value": "[parameters('tags')]"
+          },
+          "managedBy": {
+            "value": "[parameters('managedBy')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2018-05-01/subscriptionDeploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.4.1008.15138",
+              "templateHash": "11887561622322256418"
+            }
+          },
+          "parameters": {
+            "name": {
+              "type": "string"
+            },
+            "location": {
+              "type": "string"
+            },
+            "tags": {
+              "type": "object",
+              "defaultValue": {}
+            },
+            "managedBy": {
+              "type": "string",
+              "defaultValue": ""
+            }
+          },
+          "functions": [],
+          "resources": [
+            {
+              "type": "Microsoft.Resources/resourceGroups",
+              "apiVersion": "2021-04-01",
+              "name": "[parameters('name')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "managedBy": "[parameters('managedBy')]",
+              "properties": {}
+            }
+          ],
+          "outputs": {
+            "resourceGroupObj": {
+              "type": "object",
+              "value": "[reference(subscriptionResourceId('Microsoft.Resources/resourceGroups', parameters('name')), '2021-04-01', 'full')]"
+            }
+          }
+        }
+      }
+    },
+    {
+      "copy": {
+        "name": "storageAccount",
+        "count": "[length(parameters('resourceGroups').name)]"
+      },
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2020-06-01",
+      "name": "[format('deploy-st-{0}-{1}', parameters('resourceGroups').name[copyIndex()], parameters('location'))]",
+      "resourceGroup": "[format('rg-{0}-{1}-{2}', variables('name'), parameters('location'), parameters('resourceGroups').name[copyIndex()])]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "name": {
+            "value": "[format('rg-{0}-{1}-{2}', variables('name'), parameters('location'), parameters('resourceGroups').name[copyIndex()])]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.4.1008.15138",
+              "templateHash": "10671500369936113299"
+            }
+          },
+          "parameters": {
+            "name": {
+              "type": "string"
+            },
+            "tags": {
+              "type": "object",
+              "defaultValue": {}
+            },
+            "skuName": {
+              "type": "string",
+              "defaultValue": "Standard_LRS"
+            },
+            "allowBlobPublicAccess": {
+              "type": "bool",
+              "defaultValue": false
+            }
+          },
+          "functions": [],
+          "resources": [
+            {
+              "type": "Microsoft.Storage/storageAccounts",
+              "apiVersion": "2021-06-01",
+              "name": "[toLower(take(format('st{0}', uniqueString(parameters('name'))), 24))]",
+              "location": "[resourceGroup().location]",
+              "tags": "[parameters('tags')]",
+              "sku": {
+                "name": "[parameters('skuName')]"
+              },
+              "kind": "Storage",
+              "properties": {
+                "allowBlobPublicAccess": "[parameters('allowBlobPublicAccess')]",
+                "allowCrossTenantReplication": true,
+                "allowSharedKeyAccess": true
+              }
+            }
+          ],
+          "outputs": {
+            "storageAccounts": {
+              "type": "object",
+              "value": "[reference(resourceId('Microsoft.Storage/storageAccounts', toLower(take(format('st{0}', uniqueString(parameters('name'))), 24))), '2021-06-01', 'full')]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "MlzResourceGroup"
+      ]
+    },
+    {
+      "copy": {
+        "name": "networkSecurityGroup",
+        "count": "[length(parameters('resourceGroups').name)]"
+      },
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2020-06-01",
+      "name": "[format('deploy-nsg-{0}-{1}', parameters('resourceGroups').name[copyIndex()], parameters('location'))]",
+      "resourceGroup": "[format('rg-{0}-{1}-{2}', variables('name'), parameters('location'), parameters('resourceGroups').name[copyIndex()])]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "name": {
+            "value": "[format('nsg-{0}-{1}-{2}', variables('name'), parameters('location'), parameters('resourceGroups').name[copyIndex()])]"
+          },
+          "tags": {
+            "value": "[parameters('tags')]"
+          },
+          "securityRules": {
+            "value": "[variables('defaultNetworkSecurityGroupRules')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.4.1008.15138",
+              "templateHash": "8548559282282685083"
+            }
+          },
+          "parameters": {
+            "name": {
+              "type": "string"
+            },
+            "tags": {
+              "type": "object",
+              "defaultValue": {}
+            },
+            "securityRules": {
+              "type": "array"
+            }
+          },
+          "functions": [],
+          "resources": [
+            {
+              "type": "Microsoft.Network/networkSecurityGroups",
+              "apiVersion": "2021-03-01",
+              "name": "[parameters('name')]",
+              "location": "[resourceGroup().location]",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "securityRules": "[parameters('securityRules')]"
+              }
+            }
+          ],
+          "outputs": {
+            "networkSecurityGroups": {
+              "type": "object",
+              "value": "[reference(resourceId('Microsoft.Network/networkSecurityGroups', parameters('name')), '2021-03-01', 'full')]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "storageAccount"
+      ]
+    },
+    {
+      "copy": {
+        "name": "virtualNetwork",
+        "count": "[length(parameters('resourceGroups').name)]"
+      },
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2020-06-01",
+      "name": "[format('deploy-vnet-{0}-{1}', parameters('resourceGroups').name[copyIndex()], parameters('location'))]",
+      "resourceGroup": "[format('rg-{0}-{1}-{2}', variables('name'), parameters('location'), parameters('resourceGroups').name[copyIndex()])]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "name": {
+            "value": "[format('vnet-{0}-{1}-{2}', variables('name'), parameters('location'), parameters('resourceGroups').name[copyIndex()])]"
+          },
+          "tags": {
+            "value": "[parameters('tags')]"
+          },
+          "addressPrefix": {
+            "value": "[parameters('resourceGroups')[parameters('resourceGroups').name[copyIndex()]].addressPrefix]"
+          },
+          "subnets": {
+            "value": "[parameters('resourceGroups')[parameters('resourceGroups').name[copyIndex()]].subnets]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.4.1008.15138",
+              "templateHash": "17383389571514075010"
+            }
+          },
+          "parameters": {
+            "name": {
+              "type": "string"
+            },
+            "tags": {
+              "type": "object",
+              "defaultValue": {}
+            },
+            "addressPrefix": {
+              "type": "string"
+            },
+            "subnets": {
+              "type": "array"
+            }
+          },
+          "functions": [],
+          "resources": [
+            {
+              "type": "Microsoft.Network/virtualNetworks",
+              "apiVersion": "2021-03-01",
+              "name": "[parameters('name')]",
+              "location": "[resourceGroup().location]",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "addressSpace": {
+                  "addressPrefixes": [
+                    "[parameters('addressPrefix')]"
+                  ]
+                },
+                "enableDdosProtection": true,
+                "enableVmProtection": true,
+                "flowTimeoutInMinutes": 10,
+                "subnets": [
+                  "[parameters('subnets')]"
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "dependsOn": [
+        "networkSecurityGroup"
+      ]
+    }
+  ]
+}
