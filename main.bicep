@@ -4,68 +4,74 @@ param managedBy string = 'shawn.gibbs@mscpec.com'
 param namePrefix string = 'mlz'
 param location string = deployment().location
 param tags object = {}
-param resourceGroups object = {
-  hub: {
-    name: 'hub'
-    addressPrefix: '10.0.100.0/24'
-    subnets : {
-      name: 'hub-subnet'
-      properties: {
-        addressPrefix: '10.0.100.128/27'
-        serviceEndpoints: [
-          {
-            service: 'Microsoft.Storage'
-          }
-        ]
-      }
-    }
-  }
-  operations: {
-    name: 'operations'
-    addressPrefix:  '10.0.115.0/26'
-    subnets : {
-      name: 'operations-subnet'
-      properties: {
-        addressPrefix: '10.0.115.0/27'
-        serviceEndpoints: [
-          {
-            service: 'Microsoft.Storage'
-          }
-        ]
-      }
-    }
-  }
-  sharedServices: {
-    name: 'sharedServices'
-    addressPrefix: '10.0.120.0/26'
-    subnets : {
-      name: 'sharedServices-subnet'
-      properties: {
-        addressPrefix: '10.0.120.0/27'
-        serviceEndpoints: [
-          {
-            service: 'Microsoft.Storage'
-          }
-        ]
-      }
-    }
-  }
-  identity: {
-    name: 'identity'
-    addressPrefix: '10.0.110.0/26'
-    subnets : {
-      name: 'identity-subnet'
-      properties: {
-        addressPrefix: '10.0.110.0/27'
-        serviceEndpoints: [
-          {
-            service: 'Microsoft.Storage'
-          }
-        ]
-      }
-    }
-  }
-}
+var resourceGroups = [
+  json(loadTextContent('./scaffolding/hub.json'))
+  json(loadTextContent('./scaffolding/operations.json'))
+  json(loadTextContent('./scaffolding/identity.json'))
+  json(loadTextContent('./scaffolding/sharedServices.json'))
+]
+// {
+//   hub: {
+//     name: 'hub'
+//     addressPrefix: '10.0.100.0/24'
+//     subnets : {
+//       name: 'hub-subnet'
+//       properties: {
+//         addressPrefix: '10.0.100.128/27'
+//         serviceEndpoints: [
+//           {
+//             service: 'Microsoft.Storage'
+//           }
+//         ]
+//       }
+//     }
+//   }
+//   operations: {
+//     name: 'operations'
+//     addressPrefix:  '10.0.115.0/26'
+//     subnets : {
+//       name: 'operations-subnet'
+//       properties: {
+//         addressPrefix: '10.0.115.0/27'
+//         serviceEndpoints: [
+//           {
+//             service: 'Microsoft.Storage'
+//           }
+//         ]
+//       }
+//     }
+//   }
+//   sharedServices: {
+//     name: 'sharedServices'
+//     addressPrefix: '10.0.120.0/26'
+//     subnets : {
+//       name: 'sharedServices-subnet'
+//       properties: {
+//         addressPrefix: '10.0.120.0/27'
+//         serviceEndpoints: [
+//           {
+//             service: 'Microsoft.Storage'
+//           }
+//         ]
+//       }
+//     }
+//   }
+//   identity: {
+//     name: 'identity'
+//     addressPrefix: '10.0.110.0/26'
+//     subnets : {
+//       name: 'identity-subnet'
+//       properties: {
+//         addressPrefix: '10.0.110.0/27'
+//         serviceEndpoints: [
+//           {
+//             service: 'Microsoft.Storage'
+//           }
+//         ]
+//       }
+//     }
+//   }
+// }
 
 var name = empty(deployment().name) ? namePrefix : deployment().name 
 
@@ -100,51 +106,51 @@ var defaultNetworkSecurityGroupRules = [
   }
 ]
 
-module MlzResourceGroup './Microsoft.Resources/resourceGroups.bicep' = [for rg in items(resourceGroups): {
-  name: 'deploy-rg-${name}-${location}-${rg.key}'
+module MlzResourceGroup './Microsoft.Resources/resourceGroups.bicep' = [for rg in resourceGroups: {
+  name: 'deploy-rg-${name}-${location}-${rg.name}'
   scope: subscription()
   params: {
-    name: 'rg-${name}-${location}-${rg.key}'
+    name: 'rg-${name}-${location}-${rg.name}'
     location: location
     tags: tags
     managedBy: managedBy
   }
 }]
 
-module storageAccount './Microsoft.Storage/storageAccounts.bicep' = [for rg in items(resourceGroups): {
-  name: 'deploy-st-${rg.key}-${location}'
-  scope: resourceGroup('rg-${name}-${location}-${rg.key}')
+module storageAccount './Microsoft.Storage/storageAccounts.bicep' = [for rg in resourceGroups: {
+  name: 'deploy-st-${rg.name}-${location}'
+  scope: resourceGroup('rg-${name}-${location}-${rg.name}')
   dependsOn: [
     MlzResourceGroup
   ]
   params: {
-    name: 'rg-${name}-${location}-${rg.key}'
+    name: 'rg-${name}-${location}-${rg.name}'
   }
 }]
 
-module networkSecurityGroup 'Microsoft.Network/networkSecurityGroups.bicep' = [for rg in items(resourceGroups): {
-  name: 'deploy-nsg-${rg.key}-${location}'
-  scope: resourceGroup('rg-${name}-${location}-${rg.key}')
+module networkSecurityGroup 'Microsoft.Network/networkSecurityGroups.bicep' = [for rg in resourceGroups: {
+  name: 'deploy-nsg-${rg.name}-${location}'
+  scope: resourceGroup('rg-${name}-${location}-${rg.name}')
   dependsOn: [
     storageAccount
   ]
   params: {
-    name: 'nsg-${name}-${location}-${rg.key}'
+    name: 'nsg-${name}-${location}-${rg.name}'
     tags: tags
     securityRules: defaultNetworkSecurityGroupRules
   }
 }]
 
-module virtualNetwork 'Microsoft.Network/virtualNetworks.bicep' = [for rg in items(resourceGroups): {
-  name: 'deploy-vnet-${rg.key}-${location}'
-  scope: resourceGroup('rg-${name}-${location}-${rg.value.name}')
+module virtualNetwork 'Microsoft.Network/virtualNetworks.bicep' = [for rg in resourceGroups: {
+  name: 'deploy-vnet-${rg.name}-${location}'
+  scope: resourceGroup('rg-${name}-${location}-${rg.name}')
   dependsOn: [
     networkSecurityGroup
   ]
   params: {
-    name: 'vnet-${name}-${location}-${rg.key}'
+    name: 'vnet-${name}-${location}-${rg.name}'
     tags: tags
-    addressPrefix: resourceGroups[rg.key].addressPrefix
-    subnets: resourceGroups[rg.key].subnets
+    addressPrefix: rg.addressPrefix
+    subnets: rg.subnets
   }
 }]

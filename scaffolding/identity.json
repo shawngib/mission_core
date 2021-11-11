@@ -1,0 +1,15 @@
+{    
+    "name": "identity",
+    "addressPrefix": "10.0.110.0/26",
+    "subnets": {
+      "name": "identity-subnet",
+      "properties": {
+        "addressPrefix": "10.0.110.0/27",
+        "serviceEndpoints": [
+          {
+            "service": "Microsoft.Storage"
+          }
+        ]
+      }
+    }
+}

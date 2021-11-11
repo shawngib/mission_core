@@ -1,0 +1,15 @@
+{
+    "name":"hub",
+    "addressPrefix": "10.0.100.0/24",
+    "subnets": {
+        "name": "hub-subnet",
+        "properties": {
+        "addressPrefix": "10.0.100.128/27",
+        "serviceEndpoints": [
+            {
+            "service": "Microsoft.Storage"
+            }
+        ]
+        }
+    }
+}
